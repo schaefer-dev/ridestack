@@ -67,6 +67,8 @@ const ride = (over: Partial<Ride>): Ride => ({
   elevation_gain_m: 420,
   duration_s: 9000,
   moving_time_s: 8400,
+  avg_power_w: null,
+  normalized_power_w: null,
   notes: null,
   source: 'garmin',
   activity_type: 'gravel_cycling',
@@ -217,6 +219,7 @@ describe('FavoritesTab', () => {
       summary({ id: 'r2', name: 'Seerunde', ride_count: 3 }),
       summary({ id: 'r3', name: '6S Gipfel', ride_count: 1, reference_ride_id: 'ride-9' }),
     ]);
+    vi.mocked(api.mergeRoutes).mockResolvedValue(summary({ id: 'r1' }));
   });
 
   function setup(selection = { routeId: null as string | null, rideId: null as string | null }) {
@@ -251,6 +254,23 @@ describe('FavoritesTab', () => {
     await userEvent.click(screen.getByRole('button', { name: /Gipfel/ }));
     expect(onSelectRide).toHaveBeenCalledWith('ride-9');
     expect(onSelectRoute).toHaveBeenCalledTimes(1);
+  });
+
+  it('merges a route ridden once from its row menu, or opens its route page', async () => {
+    const { onSelectRoute } = setup();
+    await screen.findByRole('region', { name: '6 stars' });
+    await userEvent.click(screen.getByRole('button', { name: 'Route actions' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Merge into another route…' }));
+    const picker = screen.getByRole('dialog', { name: 'Merge into another route' });
+    expect(within(picker).queryByRole('button', { name: /Gipfel/ })).not.toBeInTheDocument();
+    await userEvent.click(within(picker).getByRole('button', { name: /Waldrunde/ }));
+    const confirm = screen.getByRole('dialog', { name: 'Merge routes?' });
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Merge' }));
+    expect(api.mergeRoutes).toHaveBeenCalledWith('r3', 'r1');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Route actions' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Open route page' }));
+    expect(onSelectRoute).toHaveBeenCalledWith('r3');
   });
 
   it('filters by surface and explains how to add favorites', async () => {

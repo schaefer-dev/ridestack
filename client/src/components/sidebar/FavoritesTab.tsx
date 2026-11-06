@@ -1,20 +1,23 @@
 import { useQuery } from '@tanstack/react-query';
-import { Star } from 'lucide-react';
+import { ExternalLink, GitMerge, Star } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { Selection } from '../../App';
-import { getRoutes, type BikeFilter } from '../../api';
+import { getRoutes, type BikeFilter, type RouteSummary } from '../../api';
 import { formatDate, formatElevation, formatKm } from '../../format';
 import { usePreviewHandlers } from '../../preview';
 import { qk } from '../../queryKeys';
 import { RouteName } from '../ui/badges';
 import { cx } from '../ui/cx';
 import { SearchInput, ToggleChip } from '../ui/fields';
+import { Menu } from '../ui/Menu';
 import { Metrics } from '../ui/Metrics';
+import RoutePicker from '../ui/RoutePicker';
 import { EmptyState, SkeletonRows } from '../ui/states';
 import { countFavorites, favoriteGroups, type Favorite, type FavoriteKind } from './favorites';
 import { EMPTY_METRIC_FILTER, matchesMetrics, type MetricFilter } from './metricFilter';
 import RouteDetail from './RouteDetail';
 import { BikeDots, RouteRow } from './RoutesTab';
+import { mergeTargets, useMergeRoute } from './useMergeRoute';
 
 interface Props {
   bikeFilter: BikeFilter;
@@ -66,6 +69,13 @@ export default function FavoritesTab({
   );
   const hasAny = useMemo(() => countFavorites(routes) > 0, [routes]);
   const maxCount = useMemo(() => Math.max(1, ...(routes ?? []).map((r) => r.ride_count)), [routes]);
+  // A route ridden once has no route page row here, so its merge is offered from the row menu.
+  const [mergeSource, setMergeSource] = useState<RouteSummary | null>(null);
+  const merge = useMergeRoute(() => onSelectRide(null));
+  const mergeOptions = useMemo(
+    () => (mergeSource ? mergeTargets(routes ?? [], mergeSource.id) : []),
+    [routes, mergeSource]
+  );
 
   const detailId = selection.routeId;
   return (
@@ -131,6 +141,8 @@ export default function FavoritesTab({
                           : f.route.reference_ride_id
                       )
                     }
+                    onOpenRoute={() => onSelectRoute(f.route.id)}
+                    onMerge={() => setMergeSource(f.route)}
                   />
                 )
               )}
@@ -138,6 +150,18 @@ export default function FavoritesTab({
           ))}
         </div>
       </div>
+      {mergeSource && (
+        <RoutePicker
+          title="Merge into another route"
+          routes={mergeOptions}
+          onPick={(id) => {
+            const target = mergeOptions.find((r) => r.id === id);
+            setMergeSource(null);
+            if (target) void merge.askMerge(mergeSource, target);
+          }}
+          onClose={() => setMergeSource(null)}
+        />
+      )}
       {detailId && (
         <RouteDetail
           key={detailId}
@@ -157,45 +181,64 @@ export default function FavoritesTab({
   );
 }
 
-/** A favourite ridden only once: selecting it selects that ride, no route page needed. */
+/**
+ * A favourite ridden only once: selecting it selects that ride, no route page needed. The menu
+ * still reaches the route page and merging (e.g. a ride the matcher didn't group).
+ */
 function SingleRideRow({
   favorite,
   selected,
   onSelect,
+  onOpenRoute,
+  onMerge,
 }: {
   favorite: Favorite;
   selected: boolean;
   onSelect(): void;
+  onOpenRoute(): void;
+  onMerge(): void;
 }) {
   const { route } = favorite;
   const preview = usePreviewHandlers(
     route.reference_ride_id ? { kind: 'ride', id: route.reference_ride_id } : null
   );
   return (
-    <button
+    <div
       {...preview}
-      onClick={onSelect}
-      aria-pressed={selected}
       className={cx(
-        'relative w-full rounded-md px-3 py-2.5 text-left transition-colors',
+        'group relative flex items-start gap-1 rounded-md pr-1.5 transition-colors',
         selected ? 'bg-active' : 'hover:bg-raised'
       )}
     >
       {selected && (
         <span aria-hidden className="absolute top-2 bottom-2 left-0 w-0.5 rounded-full bg-signal" />
       )}
-      <span className="flex items-center gap-2">
-        <RouteName name={route.name} className="flex-1 text-sm font-medium text-fg" />
-        <BikeDots bikeTypes={route.bike_types} />
-      </span>
-      <Metrics
-        className="mt-1"
+      <button
+        onClick={onSelect}
+        aria-pressed={selected}
+        className="min-w-0 flex-1 py-2.5 pl-3 text-left"
+      >
+        <span className="flex items-center gap-2">
+          <RouteName name={route.name} className="flex-1 text-sm font-medium text-fg" />
+          <BikeDots bikeTypes={route.bike_types} />
+        </span>
+        <Metrics
+          className="mt-1"
+          items={[
+            formatKm(route.avg_distance_km, 0),
+            formatElevation(route.avg_elevation_gain_m),
+            `ridden once, ${formatDate(route.last_ridden)}`,
+          ]}
+        />
+      </button>
+      <Menu
+        label="Route actions"
+        className="mt-2 opacity-60 group-hover:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100"
         items={[
-          formatKm(route.avg_distance_km, 0),
-          formatElevation(route.avg_elevation_gain_m),
-          `ridden once, ${formatDate(route.last_ridden)}`,
+          { label: 'Open route page', icon: <ExternalLink />, onSelect: onOpenRoute },
+          { label: 'Merge into another route…', icon: <GitMerge />, onSelect: onMerge },
         ]}
       />
-    </button>
+    </div>
   );
 }

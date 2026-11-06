@@ -12,7 +12,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   errorMessage,
   getRoute,
-  mergeRoutes,
   moveRideToRoute,
   renameRoute,
   unlinkPlannedRoute,
@@ -35,13 +34,13 @@ import { invalidateRouteData, qk } from '../../queryKeys';
 import { useToast } from '../Toast';
 import { RouteName } from '../ui/badges';
 import { Button } from '../ui/Button';
-import { useConfirm } from '../ui/Confirm';
 import { cx } from '../ui/cx';
 import { inputClass } from '../ui/fields';
 import { Menu } from '../ui/Menu';
 import RoutePicker from '../ui/RoutePicker';
 import { Figure } from '../ui/Metrics';
 import { EmptyState, SkeletonRows } from '../ui/states';
+import { mergeTargets, useMergeRoute } from './useMergeRoute';
 
 /** Below this share of a ride on its route, the share is highlighted. */
 const OFF_ROUTE = 0.97;
@@ -69,7 +68,6 @@ export default function RouteDetail({
 }) {
   const queryClient = useQueryClient();
   const toast = useToast();
-  const confirm = useConfirm();
   const {
     data: detail,
     isLoading,
@@ -102,16 +100,8 @@ export default function RouteDetail({
     },
     onError: (e) => toast.show(errorMessage(e), 'error'),
   });
-  const merge = useMutation({
-    mutationFn: (into: string) => mergeRoutes(routeId, into),
-    onSuccess: (_, into) => {
-      toast.show('Routes merged', 'success');
-      // This route no longer exists: continue with the one it was merged into.
-      onSelectRoute(into);
-      return onDone();
-    },
-    onError: (e) => toast.show(errorMessage(e), 'error'),
-  });
+  // This route no longer exists after a merge: continue with the one it was merged into.
+  const merge = useMergeRoute(onSelectRoute);
   const move = useMutation({
     mutationFn: ({ rideId, target }: { rideId: string; target: string | null }) =>
       moveRideToRoute(rideId, target),
@@ -122,13 +112,7 @@ export default function RouteDetail({
     onError: (e) => toast.show(errorMessage(e), 'error'),
   });
 
-  const otherRoutes = useMemo(
-    () =>
-      allRoutes
-        .filter((r) => r.id !== routeId)
-        .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')),
-    [allRoutes, routeId]
-  );
+  const otherRoutes = useMemo(() => mergeTargets(allRoutes, routeId), [allRoutes, routeId]);
 
   const rowRefs = useRef<Record<string, HTMLLIElement | null>>({});
   useEffect(() => {
@@ -136,7 +120,7 @@ export default function RouteDetail({
       rowRefs.current[selectedRideId]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [selectedRideId, detail]);
 
-  const pickRoute = async (targetId: string) => {
+  const pickRoute = (targetId: string) => {
     const current = picker;
     setPicker(null);
     if (!current) return;
@@ -145,13 +129,7 @@ export default function RouteDetail({
       return;
     }
     const target = otherRoutes.find((r) => r.id === targetId);
-    if (!target || !route) return;
-    const ok = await confirm({
-      title: 'Merge routes?',
-      message: `Merge all ${route.ride_count} ride(s) into "${target.name}"?`,
-      confirmLabel: 'Merge',
-    });
-    if (ok) merge.mutate(target.id);
+    if (target && route) void merge.askMerge(route, target);
   };
 
   return (
@@ -292,7 +270,7 @@ export default function RouteDetail({
             picker.kind === 'merge' ? 'Merge into another route' : 'Move ride to another route'
           }
           routes={otherRoutes}
-          onPick={(id) => void pickRoute(id)}
+          onPick={pickRoute}
           onClose={() => setPicker(null)}
         />
       )}
