@@ -374,6 +374,34 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('button', { name: /Unassigned/ })).not.toBeInTheDocument();
   });
 
+  it('filters the lists by distance and elevation from a collapsed panel', async () => {
+    vi.mocked(api.getStats).mockResolvedValue(stats(0));
+    vi.mocked(api.getRoutes).mockResolvedValue([
+      summary({}),
+      summary({ id: 'r2', name: 'Seerunde', avg_elevation_gain_m: 90 }),
+    ]);
+    setup();
+    expect(await screen.findByText('Seerunde')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Minimum elevation')).not.toBeInTheDocument();
+
+    const toggle = screen.getByRole('button', { name: 'Filters' });
+    await userEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await userEvent.type(screen.getByLabelText('Minimum elevation'), '200');
+    expect(screen.queryByText('Seerunde')).not.toBeInTheDocument();
+    expect(screen.getByText('Waldrunde')).toBeInTheDocument();
+
+    // Collapsing keeps the filter; the toggle shows it is active.
+    await userEvent.click(toggle);
+    expect(screen.queryByLabelText('Minimum elevation')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Filters 1' })).toBeInTheDocument();
+    expect(screen.queryByText('Seerunde')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Filters 1' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    expect(screen.getByText('Seerunde')).toBeInTheDocument();
+  });
+
   it('keeps the sync details in the Sources popover', async () => {
     vi.mocked(api.getStats).mockResolvedValue(stats(0));
     setup();

@@ -11,11 +11,14 @@ import { BikeDot, RideCount, RouteName } from '../ui/badges';
 import { Select, SearchInput, Switch } from '../ui/fields';
 import { Metrics } from '../ui/Metrics';
 import { EmptyState, SkeletonRows } from '../ui/states';
+import { EMPTY_METRIC_FILTER, matchesMetrics, type MetricFilter } from './metricFilter';
 import RouteDetail from './RouteDetail';
 import { SORT_LABELS, sortRoutes, type SortKey } from './routeSort';
 
 interface Props {
   bikeFilter: BikeFilter;
+  /** Distance / elevation bounds from the sidebar's filter panel (matched on route averages). */
+  metricFilter?: MetricFilter;
   selection: Selection;
   onSelectRoute(routeId: string | null): void;
   onSelectRide(rideId: string | null, routeId?: string | null): void;
@@ -25,7 +28,13 @@ interface Props {
  * Route list; a selected route opens as a detail view. The list stays mounted (hidden) meanwhile,
  * so search, sort and scroll position survive the round trip.
  */
-export default function RoutesTab({ bikeFilter, selection, onSelectRoute, onSelectRide }: Props) {
+export default function RoutesTab({
+  bikeFilter,
+  metricFilter = EMPTY_METRIC_FILTER,
+  selection,
+  onSelectRoute,
+  onSelectRide,
+}: Props) {
   const {
     data: routes,
     isLoading,
@@ -41,10 +50,13 @@ export default function RoutesTab({ bikeFilter, selection, onSelectRoute, onSele
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
     const filtered = (routes ?? []).filter(
-      (r) => (!q || (r.name ?? '').toLowerCase().includes(q)) && (!repeatedOnly || r.ride_count > 1)
+      (r) =>
+        (!q || (r.name ?? '').toLowerCase().includes(q)) &&
+        (!repeatedOnly || r.ride_count > 1) &&
+        matchesMetrics(r.avg_distance_km, r.avg_elevation_gain_m, metricFilter)
     );
     return sortRoutes(filtered, sort);
-  }, [routes, search, sort, repeatedOnly]);
+  }, [routes, search, sort, repeatedOnly, metricFilter]);
   const maxCount = useMemo(() => Math.max(1, ...(routes ?? []).map((r) => r.ride_count)), [routes]);
 
   const detailId = selection.routeId;

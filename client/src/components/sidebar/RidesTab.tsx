@@ -22,21 +22,24 @@ import { inputClass, SearchInput } from '../ui/fields';
 import { Menu } from '../ui/Menu';
 import { Metrics } from '../ui/Metrics';
 import { EmptyState, SkeletonRows } from '../ui/states';
+import { EMPTY_METRIC_FILTER, matchesMetrics, type MetricFilter } from './metricFilter';
 
 interface Props {
   bikeFilter: BikeFilter;
+  /** Distance / elevation bounds from the sidebar's filter panel. */
+  metricFilter?: MetricFilter;
   selectedRideId: string | null;
   onSelectRide(rideId: string | null): void;
   onShowRoute(routeId: string): void;
 }
 
-/** Parses an optional numeric filter input; '' or garbage means "no limit". */
-function parseLimit(v: string): number | null {
-  const n = Number.parseFloat(v);
-  return v.trim() === '' || !Number.isFinite(n) ? null : n;
-}
-
-export default function RidesTab({ bikeFilter, selectedRideId, onSelectRide, onShowRoute }: Props) {
+export default function RidesTab({
+  bikeFilter,
+  metricFilter = EMPTY_METRIC_FILTER,
+  selectedRideId,
+  onSelectRide,
+  onShowRoute,
+}: Props) {
   const {
     data: rides,
     isLoading,
@@ -51,24 +54,17 @@ export default function RidesTab({ bikeFilter, selectedRideId, onSelectRide, onS
   const maxCount = useMemo(() => Math.max(1, ...(routes ?? []).map((r) => r.ride_count)), [routes]);
 
   const [search, setSearch] = useState('');
-  const [minKm, setMinKm] = useState('');
-  const [maxKm, setMaxKm] = useState('');
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const min = parseLimit(minKm);
-    const max = parseLimit(maxKm);
-    return (rides ?? []).filter((r) => {
-      const km = r.distance_km ?? 0;
-      return (
+    return (rides ?? []).filter(
+      (r) =>
         (!q ||
           (r.title ?? '').toLowerCase().includes(q) ||
           (r.route_name ?? '').toLowerCase().includes(q)) &&
-        (min === null || km >= min) &&
-        (max === null || km <= max)
-      );
-    });
-  }, [rides, search, minKm, maxKm]);
+        matchesMetrics(r.distance_km, r.elevation_gain_m, metricFilter)
+    );
+  }, [rides, search, metricFilter]);
 
   const refs = useRef<Record<string, HTMLDivElement | null>>({});
   useEffect(() => {
@@ -85,34 +81,11 @@ export default function RidesTab({ bikeFilter, selectedRideId, onSelectRide, onS
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <div className="flex items-center gap-2 text-xs text-muted">
-          <span>Distance</span>
-          <input
-            type="number"
-            min="0"
-            placeholder="min"
-            value={minKm}
-            onChange={(e) => setMinKm(e.target.value)}
-            className={cx(inputClass, 'tnum h-7 w-16 px-2 text-xs')}
-            aria-label="Minimum distance"
-          />
-          <span aria-hidden>–</span>
-          <input
-            type="number"
-            min="0"
-            placeholder="max"
-            value={maxKm}
-            onChange={(e) => setMaxKm(e.target.value)}
-            className={cx(inputClass, 'tnum h-7 w-16 px-2 text-xs')}
-            aria-label="Maximum distance"
-          />
-          <span>km</span>
-          {rides && (
-            <span className="tnum ml-auto text-faint">
-              {filtered.length} of {rides.length}
-            </span>
-          )}
-        </div>
+        {rides && filtered.length !== rides.length && (
+          <div className="tnum text-right text-xs text-faint">
+            {filtered.length} of {rides.length}
+          </div>
+        )}
       </div>
       <div className="flex-1 overflow-y-auto p-1.5">
         {isLoading && <SkeletonRows />}

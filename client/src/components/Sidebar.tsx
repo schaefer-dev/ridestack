@@ -1,11 +1,18 @@
 import { useQuery } from '@tanstack/react-query';
-import { Upload } from 'lucide-react';
+import { SlidersHorizontal, Upload } from 'lucide-react';
+import { useMemo, useState, type ChangeEvent } from 'react';
 import type { Selection, SidebarTab } from '../App';
 import { getRoutes, getStats, getSuggestions, type BikeFilter, type Stats } from '../api';
 import { BIKE, BIKE_TYPES } from '../domain';
 import { qk } from '../queryKeys';
 import { countFavorites } from './sidebar/favorites';
 import FavoritesTab from './sidebar/FavoritesTab';
+import {
+  activeMetricCount,
+  EMPTY_METRIC_FILTER,
+  matchesMetrics,
+  type MetricFilter,
+} from './sidebar/metricFilter';
 import RidesTab from './sidebar/RidesTab';
 import RoutesTab from './sidebar/RoutesTab';
 import SuggestionsTab from './sidebar/SuggestionsTab';
@@ -14,7 +21,7 @@ import { overallSyncState, STATE_DOT } from './sidebar/syncState';
 import { BikeDot } from './ui/badges';
 import { Button } from './ui/Button';
 import { cx } from './ui/cx';
-import { ToggleChip } from './ui/fields';
+import { inputClass, ToggleChip } from './ui/fields';
 import { Popover } from './ui/Popover';
 
 interface Props {
@@ -48,9 +55,22 @@ export default function Sidebar(props: Props) {
     queryKey: qk.routes(props.bikeFilter),
     queryFn: () => getRoutes(props.bikeFilter),
   });
+  // Distance / elevation bounds for the lists (not the map); the panel starts collapsed.
+  const [metricFilter, setMetricFilter] = useState<MetricFilter>(EMPTY_METRIC_FILTER);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const favoriteCount = useMemo(
+    () =>
+      routes &&
+      countFavorites(
+        routes.filter((r) =>
+          matchesMetrics(r.avg_distance_km, r.avg_elevation_gain_m, metricFilter)
+        )
+      ),
+    [routes, metricFilter]
+  );
   const badge: Record<SidebarTab, number | undefined> = {
     routes: stats?.routes.total,
-    favorites: routes ? countFavorites(routes) : undefined,
+    favorites: favoriteCount,
     rides: stats?.rides.total,
     suggestions: suggestions?.counts.strong,
   };
@@ -74,11 +94,19 @@ export default function Sidebar(props: Props) {
         </div>
         {stats && <Totals stats={stats} />}
         <SyncStatusPanel only="problems" />
-        <BikeFilterChips
-          stats={stats}
-          value={props.bikeFilter}
-          onChange={props.onBikeFilterChange}
-        />
+        <div className="flex items-start gap-1">
+          <BikeFilterChips
+            stats={stats}
+            value={props.bikeFilter}
+            onChange={props.onBikeFilterChange}
+          />
+          <FiltersToggle
+            open={filtersOpen}
+            active={activeMetricCount(metricFilter)}
+            onToggle={() => setFiltersOpen((o) => !o)}
+          />
+        </div>
+        {filtersOpen && <MetricFilterPanel value={metricFilter} onChange={setMetricFilter} />}
       </header>
 
       <div
@@ -127,6 +155,7 @@ export default function Sidebar(props: Props) {
         {props.tab === 'routes' ? (
           <RoutesTab
             bikeFilter={props.bikeFilter}
+            metricFilter={metricFilter}
             selection={props.selection}
             onSelectRoute={props.onSelectRoute}
             onSelectRide={props.onSelectRide}
@@ -134,6 +163,7 @@ export default function Sidebar(props: Props) {
         ) : props.tab === 'favorites' ? (
           <FavoritesTab
             bikeFilter={props.bikeFilter}
+            metricFilter={metricFilter}
             selection={props.selection}
             onSelectRoute={props.onSelectRoute}
             onSelectRide={props.onSelectRide}
@@ -146,6 +176,7 @@ export default function Sidebar(props: Props) {
         ) : (
           <RidesTab
             bikeFilter={props.bikeFilter}
+            metricFilter={metricFilter}
             selectedRideId={props.selection.rideId}
             onSelectRide={(id) => props.onSelectRide(id)}
             onShowRoute={props.onShowRoute}
@@ -222,7 +253,11 @@ function BikeFilterChips({
       </>
     );
   return (
-    <div role="group" aria-label="Filter by bike type" className="-mx-1 flex flex-wrap gap-1">
+    <div
+      role="group"
+      aria-label="Filter by bike type"
+      className="-ml-1 flex min-w-0 flex-1 flex-wrap gap-1"
+    >
       <ToggleChip pressed={value === null} onClick={() => onChange(null)}>
         All bikes
       </ToggleChip>
@@ -244,6 +279,94 @@ function BikeFilterChips({
           Unassigned
           {count(stats?.rides.by_type.unassigned)}
         </ToggleChip>
+      )}
+    </div>
+  );
+}
+
+const FILTER_PANEL_ID = 'metric-filter-panel';
+
+function FiltersToggle({
+  open,
+  active,
+  onToggle,
+}: {
+  open: boolean;
+  active: number;
+  onToggle(): void;
+}) {
+  return (
+    <ToggleChip
+      pressed={open}
+      onClick={onToggle}
+      controls={FILTER_PANEL_ID}
+      title="Filter by distance and elevation"
+    >
+      <SlidersHorizontal aria-hidden className="size-3.5" />
+      Filters
+      {active > 0 && (
+        <>
+          {' '}
+          <span className="tnum rounded-sm bg-signal/15 px-1 font-semibold text-signal">
+            {active}
+          </span>
+        </>
+      )}
+    </ToggleChip>
+  );
+}
+
+function MetricFilterPanel({
+  value,
+  onChange,
+}: {
+  value: MetricFilter;
+  onChange(filter: MetricFilter): void;
+}) {
+  const set = (key: keyof MetricFilter) => (e: ChangeEvent<HTMLInputElement>) =>
+    onChange({ ...value, [key]: e.target.value });
+  const bound = (key: keyof MetricFilter, placeholder: string, label: string) => (
+    <input
+      type="number"
+      min="0"
+      placeholder={placeholder}
+      value={value[key]}
+      onChange={set(key)}
+      className={cx(inputClass, 'tnum h-7 w-16 px-2 text-xs')}
+      aria-label={label}
+    />
+  );
+  const rows: Array<[string, keyof MetricFilter, keyof MetricFilter, string]> = [
+    ['Distance', 'minKm', 'maxKm', 'km'],
+    ['Elevation', 'minElev', 'maxElev', 'm'],
+  ];
+  return (
+    <div
+      id={FILTER_PANEL_ID}
+      role="group"
+      aria-label="Filter by distance and elevation"
+      className="flex items-end gap-3 rounded-md border border-line bg-raised/40 px-2.5 py-2"
+    >
+      <div className="space-y-1.5">
+        {rows.map(([label, min, max, unit]) => (
+          <div key={label} className="flex items-center gap-2 text-xs text-muted">
+            <span className="w-16">{label}</span>
+            {bound(min, 'min', `Minimum ${label.toLowerCase()}`)}
+            <span aria-hidden>–</span>
+            {bound(max, 'max', `Maximum ${label.toLowerCase()}`)}
+            <span>{unit}</span>
+          </div>
+        ))}
+      </div>
+      {activeMetricCount(value) > 0 && (
+        <Button
+          size="sm"
+          variant="ghost"
+          className="ml-auto"
+          onClick={() => onChange(EMPTY_METRIC_FILTER)}
+        >
+          Clear
+        </Button>
       )}
     </div>
   );

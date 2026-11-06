@@ -94,22 +94,29 @@ export function Slider(props: {
   );
 }
 
-/** Pressable chip for filters (aria-pressed). */
+/**
+ * Pressable chip for filters (aria-pressed). With `controls` it is a disclosure button instead
+ * (aria-expanded for the panel with that id).
+ */
 export function ToggleChip({
   pressed,
   onClick,
   children,
   title,
+  controls,
 }: {
   pressed: boolean;
   onClick(): void;
   children: ReactNode;
   title?: string;
+  controls?: string;
 }) {
   return (
     <button
       type="button"
-      aria-pressed={pressed}
+      aria-pressed={controls ? undefined : pressed}
+      aria-expanded={controls ? pressed : undefined}
+      aria-controls={controls}
       title={title}
       onClick={onClick}
       className={cx(

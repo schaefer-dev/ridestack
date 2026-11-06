@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest';
 import type { FilePreview, RouteSummary } from '../src/api';
 import { summarizePreview } from '../src/components/importSummary';
 import { countFavorites, favoriteGroups } from '../src/components/sidebar/favorites';
+import {
+  activeMetricCount,
+  EMPTY_METRIC_FILTER,
+  matchesMetrics,
+} from '../src/components/sidebar/metricFilter';
 import { sortRoutes } from '../src/components/sidebar/routeSort';
 import { HEAT_RAMP, heatColor, parseRouteRating } from '../src/domain';
 import {
@@ -188,5 +193,29 @@ describe('favoriteGroups', () => {
     expect(shape(favoriteGroups(routes, 'gravel'))).toEqual([[5, ['b']]]);
     expect(shape(favoriteGroups(routes, 'road'))).toEqual([[5, ['d']]]);
     expect(shape(favoriteGroups(routes, 'all', 'coast'))).toEqual([[6, ['c']]]);
+  });
+});
+
+describe('metric filter', () => {
+  const f = (over: Partial<typeof EMPTY_METRIC_FILTER>) => ({ ...EMPTY_METRIC_FILTER, ...over });
+
+  it('applies inclusive distance and elevation bounds', () => {
+    expect(matchesMetrics(50, 400, f({ minKm: '50', maxKm: '80' }))).toBe(true);
+    expect(matchesMetrics(49.9, 400, f({ minKm: '50' }))).toBe(false);
+    expect(matchesMetrics(50, 1200, f({ maxElev: '1000' }))).toBe(false);
+    expect(matchesMetrics(50, 1000, f({ minElev: '500', maxElev: '1000' }))).toBe(true);
+  });
+
+  it('lets unknown values through only when their metric is unbounded', () => {
+    expect(matchesMetrics(null, null, EMPTY_METRIC_FILTER)).toBe(true);
+    expect(matchesMetrics(null, 400, f({ minElev: '100' }))).toBe(true);
+    expect(matchesMetrics(50, null, f({ minElev: '100' }))).toBe(false);
+  });
+
+  it('ignores empty or unparsable bounds and counts active metrics', () => {
+    expect(matchesMetrics(5, 5, f({ minKm: ' ', maxElev: 'abc' }))).toBe(true);
+    expect(activeMetricCount(f({ minKm: 'abc' }))).toBe(0);
+    expect(activeMetricCount(f({ minKm: '10', maxKm: '20' }))).toBe(1);
+    expect(activeMetricCount(f({ maxKm: '20', minElev: '300' }))).toBe(2);
   });
 });

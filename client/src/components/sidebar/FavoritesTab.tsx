@@ -12,11 +12,14 @@ import { SearchInput, ToggleChip } from '../ui/fields';
 import { Metrics } from '../ui/Metrics';
 import { EmptyState, SkeletonRows } from '../ui/states';
 import { countFavorites, favoriteGroups, type Favorite, type FavoriteKind } from './favorites';
+import { EMPTY_METRIC_FILTER, matchesMetrics, type MetricFilter } from './metricFilter';
 import RouteDetail from './RouteDetail';
 import { BikeDots, RouteRow } from './RoutesTab';
 
 interface Props {
   bikeFilter: BikeFilter;
+  /** Distance / elevation bounds from the sidebar's filter panel (matched on route averages). */
+  metricFilter?: MetricFilter;
   selection: Selection;
   onSelectRoute(routeId: string | null): void;
   onSelectRide(rideId: string | null, routeId?: string | null): void;
@@ -34,6 +37,7 @@ const KINDS: Array<{ value: FavoriteKind; label: string }> = [
  */
 export default function FavoritesTab({
   bikeFilter,
+  metricFilter = EMPTY_METRIC_FILTER,
   selection,
   onSelectRoute,
   onSelectRide,
@@ -49,7 +53,17 @@ export default function FavoritesTab({
   const [search, setSearch] = useState('');
   const [kind, setKind] = useState<FavoriteKind>('all');
 
-  const groups = useMemo(() => favoriteGroups(routes ?? [], kind, search), [routes, kind, search]);
+  const groups = useMemo(
+    () =>
+      favoriteGroups(
+        (routes ?? []).filter((r) =>
+          matchesMetrics(r.avg_distance_km, r.avg_elevation_gain_m, metricFilter)
+        ),
+        kind,
+        search
+      ),
+    [routes, kind, search, metricFilter]
+  );
   const hasAny = useMemo(() => countFavorites(routes) > 0, [routes]);
   const maxCount = useMemo(() => Math.max(1, ...(routes ?? []).map((r) => r.ride_count)), [routes]);
 
