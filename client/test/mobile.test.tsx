@@ -82,6 +82,8 @@ const ride = (over: Partial<Ride>): Ride => ({
   elevation_gain_m: 420,
   duration_s: 9000,
   moving_time_s: 8400,
+  avg_power_w: null,
+  normalized_power_w: null,
   notes: null,
   source: 'garmin',
   activity_type: 'gravel_cycling',

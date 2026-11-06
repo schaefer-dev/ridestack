@@ -3,6 +3,7 @@ import { baseline } from './001_baseline.ts';
 import { tracksRoutesGarmin } from './002_tracks_routes_garmin.ts';
 import { hammerhead } from './003_hammerhead.ts';
 import { plannedRoutes } from './004_planned_routes.ts';
+import { ridePower } from './005_ride_power.ts';
 
 /** Append-only. Never edit a migration that has shipped; add a new one instead. */
 export const migrations: readonly Migration[] = [
@@ -10,4 +11,5 @@ export const migrations: readonly Migration[] = [
   tracksRoutesGarmin,
   hammerhead,
   plannedRoutes,
+  ridePower,
 ];

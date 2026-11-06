@@ -17,6 +17,9 @@ export interface Ride {
   elevation_gain_m: number | null;
   duration_s: number | null;
   moving_time_s: number | null;
+  /** From the FIT session; null without a power meter (or for GPX). */
+  avg_power_w: number | null;
+  normalized_power_w: number | null;
   notes: string | null;
   source: 'gpx' | 'garmin' | 'hammerhead';
   activity_type: string | null;

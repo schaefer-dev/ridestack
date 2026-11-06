@@ -58,6 +58,8 @@ export interface ExternalLink {
   bikeType: BikeType | null;
   durationS: number | null;
   movingTimeS: number | null;
+  avgPowerW?: number | null;
+  normalizedPowerW?: number | null;
   devices?: readonly RideDevice[];
 }
 
@@ -142,6 +144,8 @@ export class RideImporter {
         db,
         `UPDATE rides SET ${column} = ?, activity_type = COALESCE(activity_type, ?),
            duration_s = COALESCE(duration_s, ?), moving_time_s = COALESCE(moving_time_s, ?),
+           avg_power_w = COALESCE(avg_power_w, ?),
+           normalized_power_w = COALESCE(normalized_power_w, ?),
            bike_type = COALESCE(bike_type, ?),
            bike_type_source = CASE WHEN bike_type IS NULL AND ? IS NOT NULL THEN 'auto' ELSE bike_type_source END
          WHERE id = ?`
@@ -150,6 +154,8 @@ export class RideImporter {
         link.activityType,
         link.durationS,
         link.movingTimeS,
+        roundOrNull(link.avgPowerW),
+        roundOrNull(link.normalizedPowerW),
         link.bikeType,
         link.bikeType,
         ride.id
@@ -194,6 +200,8 @@ export class RideImporter {
           parsed.durationS ??
           (startMs !== null && endMs !== null ? (endMs - startMs) / 1000 : null),
         movingTimeS: parsed.movingTimeS ?? null,
+        avgPowerW: roundOrNull(parsed.avgPowerW),
+        normalizedPowerW: roundOrNull(parsed.normalizedPowerW),
         source: opts.source,
         activityType:
           opts.activityType ?? (parsed.activityType === 'unknown' ? null : parsed.activityType),
@@ -248,6 +256,11 @@ export function ensureDerivedData(
     for (const id of unrouted) assign(id);
   }
   return { geometry: ids.length, routed: unrouted.length };
+}
+
+/** Whole watts; NULL when the device reported nothing. */
+export function roundOrNull(v: number | null | undefined): number | null {
+  return v === null || v === undefined ? null : Math.round(v);
 }
 
 function round2(v: number): number {

@@ -85,6 +85,8 @@ describe('FIT parser', () => {
       detectedBikeType: 'road',
       distanceM: 12345,
       elevationGainM: 123,
+      avgPowerW: 180,
+      normalizedPowerW: 195,
     });
     expect(parsed.devices).toEqual(
       expect.arrayContaining([

@@ -6,6 +6,7 @@ import {
   formatDuration,
   formatElevation,
   formatKm,
+  formatPower,
   formatSpeed,
   formatTime,
 } from '../../format';
@@ -39,6 +40,7 @@ export default function RideDetailPanel({
   );
   const devices = useMemo(() => deviceNames(ride.devices), [ride.devices]);
   const seconds = ride.moving_time_s ?? ride.duration_s;
+  const hasPower = ride.avg_power_w != null || ride.normalized_power_w != null;
 
   return (
     <aside
@@ -63,6 +65,12 @@ export default function RideDetailPanel({
         <Figure label="Time" value={formatDuration(seconds) || '–'} />
         <Figure label="Climb" value={formatElevation(ride.elevation_gain_m)} />
         <Figure label="Speed" value={formatSpeed(ride.distance_km, seconds) || '–'} />
+        {hasPower && (
+          <>
+            <Figure label="Avg power" value={formatPower(ride.avg_power_w)} />
+            <Figure label="NP" value={formatPower(ride.normalized_power_w)} />
+          </>
+        )}
       </dl>
 
       {profile.length > 1 && (

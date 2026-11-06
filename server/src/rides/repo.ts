@@ -26,6 +26,8 @@ export interface RideRow {
   elevation_gain_m: number | null;
   duration_s: number | null;
   moving_time_s: number | null;
+  avg_power_w: number | null;
+  normalized_power_w: number | null;
   notes: string | null;
   source: RideSource;
   activity_type: string | null;
@@ -39,7 +41,7 @@ export interface RideRow {
 }
 
 export const RIDE_COLUMNS = `id, title, date, start_time, bike_type, bike_type_source, distance_km,
-  elevation_gain_m, duration_s, moving_time_s, notes, source, activity_type, garmin_activity_id,
+  elevation_gain_m, duration_s, moving_time_s, avg_power_w, normalized_power_w, notes, source, activity_type, garmin_activity_id,
   hammerhead_activity_id, route_id, route_similarity, route_direction, route_assignment, created_at`;
 
 export interface NewRideRow {
@@ -53,6 +55,8 @@ export interface NewRideRow {
   elevationGainM: number;
   durationS: number | null;
   movingTimeS: number | null;
+  avgPowerW: number | null;
+  normalizedPowerW: number | null;
   source: RideSource;
   activityType: string | null;
   garminActivityId: number | null;
@@ -63,11 +67,11 @@ export function insertRide(db: DB, r: NewRideRow): void {
   stmt(
     db,
     `INSERT INTO rides (id, title, date, start_time, bike_type, bike_type_source, distance_km,
-       elevation_gain_m, duration_s, moving_time_s, source, activity_type, garmin_activity_id,
-       hammerhead_activity_id)
+       elevation_gain_m, duration_s, moving_time_s, avg_power_w, normalized_power_w, source,
+       activity_type, garmin_activity_id, hammerhead_activity_id)
      VALUES (@id, @title, @date, @startTime, @bikeType, @bikeTypeSource, @distanceKm,
-       @elevationGainM, @durationS, @movingTimeS, @source, @activityType, @garminActivityId,
-       @hammerheadActivityId)`
+       @elevationGainM, @durationS, @movingTimeS, @avgPowerW, @normalizedPowerW, @source,
+       @activityType, @garminActivityId, @hammerheadActivityId)`
   ).run(r);
 }
 

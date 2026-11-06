@@ -55,6 +55,8 @@ export function parseFit(bytes: Uint8Array): ParsedActivity {
     elevationGainM: numberOrUndefined(session.totalAscent),
     durationS: numberOrUndefined(session.totalElapsedTime),
     movingTimeS: numberOrUndefined(session.totalTimerTime),
+    avgPowerW: numberOrUndefined(session.avgPower),
+    normalizedPowerW: numberOrUndefined(session.normalizedPower),
     devices: extractDevices((messages.deviceInfoMesgs ?? []) as Mesg[]),
   };
 }

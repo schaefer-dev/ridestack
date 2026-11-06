@@ -13,6 +13,7 @@ import {
   formatDate,
   formatDuration,
   formatKm,
+  formatPower,
   formatRelative,
   formatSpeed,
   formatTime,
@@ -40,6 +41,8 @@ describe('format', () => {
     expect(formatKm(null)).toBe('–');
     expect(formatSpeed(50, 7200)).toBe('25.0 km/h');
     expect(formatSpeed(50, 0)).toBe('');
+    expect(formatPower(181.6)).toBe('182 W');
+    expect(formatPower(null)).toBe('–');
   });
 
   it('describes how long ago something happened', () => {

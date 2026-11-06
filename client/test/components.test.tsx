@@ -6,11 +6,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
   ProviderSyncStatus,
   Ride,
+  RideDetail,
   RouteDetail,
   RouteSummary,
   Suggestions,
   SyncStatus,
 } from '../src/api';
+import RideDetailPanel from '../src/components/map/RideDetailPanel';
 import RoutesTab from '../src/components/sidebar/RoutesTab';
 import SuggestionsTab from '../src/components/sidebar/SuggestionsTab';
 import SyncStatusPanel from '../src/components/sidebar/SyncStatusPanel';
@@ -69,6 +71,8 @@ const ride = (over: Partial<Ride>): Ride => ({
   elevation_gain_m: 420,
   duration_s: 9000,
   moving_time_s: 8400,
+  avg_power_w: null,
+  normalized_power_w: null,
   notes: null,
   source: 'garmin',
   activity_type: 'gravel_cycling',
@@ -80,6 +84,40 @@ const ride = (over: Partial<Ride>): Ride => ({
   route_assignment: 'auto',
   created_at: '2025-06-01',
   ...over,
+});
+
+describe('RideDetailPanel', () => {
+  const detail = (over: Partial<Ride>): RideDetail => ({
+    ...ride(over),
+    track: [],
+    elevation: [],
+    devices: [],
+    sections: [],
+  });
+  const show = (r: RideDetail) =>
+    render(
+      <RideDetailPanel
+        ride={r}
+        showRouteAction={false}
+        onRateSection={vi.fn()}
+        onShowRoute={vi.fn()}
+        onClose={vi.fn()}
+        onHoverPoint={vi.fn()}
+      />
+    );
+
+  it('shows average and normalized power when the ride has them', () => {
+    show(detail({ avg_power_w: 182, normalized_power_w: 197 }));
+    const panel = screen.getByRole('complementary', { name: 'Selected ride' });
+    expect(within(panel).getByText('Avg power').nextSibling).toHaveTextContent('182W');
+    expect(within(panel).getByText('NP').nextSibling).toHaveTextContent('197W');
+  });
+
+  it('leaves the power figures out without a power meter', () => {
+    show(detail({}));
+    expect(screen.getByText('Speed')).toBeInTheDocument();
+    expect(screen.queryByText('Avg power')).not.toBeInTheDocument();
+  });
 });
 
 describe('RoutesTab', () => {

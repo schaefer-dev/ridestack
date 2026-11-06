@@ -45,6 +45,10 @@ export function formatElevation(m: number | null | undefined): string {
   return m == null || !Number.isFinite(m) ? '–' : `${Math.round(m)} m`;
 }
 
+export function formatPower(w: number | null | undefined): string {
+  return w == null || !Number.isFinite(w) ? '–' : `${Math.round(w)} W`;
+}
+
 /** Average speed from distance and (preferably moving) time. */
 export function formatSpeed(
   km: number | null | undefined,

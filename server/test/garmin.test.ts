@@ -10,6 +10,7 @@ import {
 } from '../src/garmin/client.ts';
 import { GarminSync } from '../src/garmin/sync.ts';
 import { lastSyncRuns as lastRuns } from '../src/sync/runs.ts';
+import { backfillPower } from '../src/rides/backfillPower.ts';
 import { listDevices, listRides } from '../src/rides/repo.ts';
 import { buildFit, zipFit } from './helpers/fit.ts';
 import type { BikeSensorConfig } from '../src/rides/bikeSensors.ts';
@@ -266,8 +267,37 @@ describe('Garmin sync', () => {
       bike_type: 'gravel', // user bike type kept
       source: 'gpx',
       activity_type: 'road_biking',
+      avg_power_w: 180, // GPX has no power; filled from the FIT
+      normalized_power_w: 195,
     });
     expect(listDevices(ctx.db, rides[0]!.id).length).toBeGreaterThan(0);
+  });
+
+  it('backfills power of existing rides from the stored FIT files', async () => {
+    const { ctx, sync, fitDir } = await setup([
+      activity(20, 'road_biking', 0),
+      activity(21, 'road_biking', 1, LOOP, 'No power meter', false),
+    ]);
+    await sync.run();
+    expect(
+      listRides(ctx.db)
+        .map((r) => r.avg_power_w)
+        .sort()
+    ).toEqual([180, null]);
+    // As if imported before power was stored.
+    ctx.db.exec('UPDATE rides SET avg_power_w = NULL, normalized_power_w = NULL');
+    fs.rmSync(path.join(fitDir, '21.fit'));
+
+    const dry = backfillPower(ctx.db, fitDir, { apply: false });
+    expect(dry).toEqual({ checked: 2, updated: 1, missingFile: 1, noPower: 0 });
+    expect(listRides(ctx.db).every((r) => r.avg_power_w === null)).toBe(true);
+
+    backfillPower(ctx.db, fitDir, { apply: true });
+    const byId = new Map(listRides(ctx.db).map((r) => [r.garmin_activity_id, r]));
+    expect(byId.get(20)).toMatchObject({ avg_power_w: 180, normalized_power_w: 195 });
+    expect(byId.get(21)).toMatchObject({ avg_power_w: null, normalized_power_w: null });
+    // Nothing left to do for the ride that got its values.
+    expect(backfillPower(ctx.db, fitDir, { apply: false }).checked).toBe(1);
   });
 
   it('stops paging once a whole page is already known (incremental)', async () => {

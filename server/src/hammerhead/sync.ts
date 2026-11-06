@@ -319,6 +319,8 @@ export class HammerheadSync {
       bikeType: meta.bikeType,
       durationS: parsed.durationS ?? null,
       movingTimeS: parsed.movingTimeS ?? null,
+      avgPowerW: parsed.avgPowerW ?? null,
+      normalizedPowerW: parsed.normalizedPowerW ?? null,
       devices: parsed.devices,
     });
     if (result.status === 'conflict') {

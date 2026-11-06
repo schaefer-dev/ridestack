@@ -263,6 +263,8 @@ export class GarminSync {
       bikeType,
       durationS: parsed.durationS ?? a.elapsedDuration ?? null,
       movingTimeS: parsed.movingTimeS ?? a.movingDuration ?? null,
+      avgPowerW: parsed.avgPowerW ?? null,
+      normalizedPowerW: parsed.normalizedPowerW ?? null,
       devices: parsed.devices,
     });
     if (result.status === 'conflict') {

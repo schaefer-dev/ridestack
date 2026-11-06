@@ -63,8 +63,9 @@ cloud account or subscription, and a Raspberry Pi is enough to run it.
 - **Map styles**: dark (default), muted light or the standard OpenStreetMap map. The muted styles
   make even roads you rode once stand out in the heatmap.
 - **All tracks** view, and per-route view with the reference track and every ride on it.
-- **Ride details**: distance, time, climb and speed, an elevation profile that marks the hovered
-  point on the map, and the devices that recorded the ride.
+- **Ride details**: distance, time, climb and speed, average and normalized power (from FIT
+  files), an elevation profile that marks the hovered point on the map, and the devices that
+  recorded the ride.
 - **"Who rode here?"**: click any spot to list every ride that passed it, with first and last
   date.
 - **Section ratings**: mark road or trail sections (5 levels, surface tags such as gravel, mud or
@@ -263,11 +264,12 @@ flowchart LR
 | `npm run routes:rebuild`                                 | Re-cluster all rides (keeps manual moves and your route names)       |
 | `npm run routes:evaluate [-- --save]`                    | Print route groups without writing; diff against a saved snapshot    |
 | `npm run bikes:classify [-- --apply]`                    | Re-derive bike types of synced rides from `data/bike-sensors.json`   |
+| `npm run rides:power [-- --apply]`                       | Fill avg / normalized power of existing rides from stored FIT files  |
 | `npm run pi:pull` / `pi:push`                            | Copy database, sensor rules and FIT files from / to the Pi           |
 | `npm run check`                                          | Lint + typecheck + all tests (CI runs the same)                      |
 
 Stop the server before running commands that write (`garmin:sync`, `hammerhead:sync`,
-`routes:rebuild`, `bikes:classify -- --apply`).
+`routes:rebuild`, `bikes:classify -- --apply`, `rides:power -- --apply`).
 
 <details>
 <summary><b>Project structure</b></summary>

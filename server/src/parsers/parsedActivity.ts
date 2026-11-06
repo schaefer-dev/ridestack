@@ -13,5 +13,8 @@ export interface ParsedActivity {
   elevationGainM?: number;
   durationS?: number;
   movingTimeS?: number;
+  /** Session averages from a power meter (FIT only). */
+  avgPowerW?: number;
+  normalizedPowerW?: number;
   devices?: RideDevice[];
 }

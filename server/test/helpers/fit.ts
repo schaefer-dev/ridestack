@@ -4,7 +4,10 @@ import type { TrackPoint } from '../../src/track/codec.ts';
 
 const DEG_TO_SEMICIRCLES = 2 ** 31 / 180;
 
-/** Builds a minimal but valid FIT activity file (file id, devices, records, session). */
+/**
+ * Builds a minimal but valid FIT activity file (file id, devices, records, session). With sensors
+ * (a power meter), the session also carries avg 180 W / NP 195 W.
+ */
 export function buildFit(
   points: readonly TrackPoint[],
   opts: { sport?: string; subSport?: string; withSensors?: boolean } = {}
@@ -57,6 +60,7 @@ export function buildFit(
     totalAscent: 123,
     sport: opts.sport ?? 'cycling',
     subSport: opts.subSport ?? 'generic',
+    ...(opts.withSensors ? { avgPower: 180, normalizedPower: 195 } : {}),
   });
   return enc.close();
 }
