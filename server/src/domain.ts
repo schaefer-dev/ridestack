@@ -22,6 +22,25 @@ export const SURFACE_TAGS = [
   'poor_surface',
 ] as const;
 
+/** A bike type, or 'unassigned' for rides without one: what the list/map filters accept. */
+export type BikeFilterValue = BikeType | 'unassigned';
+
+/**
+ * SQL for "bike type is one of `types`" on `column` ('unassigned' = NULL). No types means no
+ * filter (empty sql).
+ */
+export function bikeTypeClause(
+  column: string,
+  types: readonly BikeFilterValue[] | undefined
+): { sql: string; params: string[] } {
+  if (!types?.length) return { sql: '', params: [] };
+  const named = types.filter((t): t is BikeType => t !== 'unassigned');
+  const parts: string[] = [];
+  if (named.length) parts.push(`${column} IN (${named.map(() => '?').join(', ')})`);
+  if (types.includes('unassigned')) parts.push(`${column} IS NULL`);
+  return { sql: `(${parts.join(' OR ')})`, params: named };
+}
+
 export function isBikeType(v: unknown): v is BikeType {
   return typeof v === 'string' && (BIKE_TYPES as readonly string[]).includes(v);
 }

@@ -105,6 +105,10 @@ describe('rides API', () => {
     );
     const unassigned = await request(app).get('/api/rides?bike_type=unassigned');
     expect(unassigned.body).toHaveLength(1);
+    // Several types at once (comma-separated), unassigned included.
+    expect((await request(app).get('/api/rides?bike_type=road,unassigned')).body).toHaveLength(1);
+    expect((await request(app).get('/api/rides?bike_type=road,gravel')).body).toHaveLength(0);
+    expect((await request(app).get('/api/rides?bike_type=road,bmx')).status).toBe(400);
   });
 
   it('previews files without importing, flagging duplicates within the batch', async () => {
@@ -314,6 +318,9 @@ describe('sections, heatmap and stats API', () => {
     expect(heat.length).toBeGreaterThan(700);
     expect(heat.length).toBeLessThan(900);
     expect((await request(app).get('/api/heatmap?bike_type=gravel')).body).toHaveLength(0);
+    expect((await request(app).get('/api/heatmap?bike_type=gravel,road')).body).toEqual(heat);
+    expect((await request(app).get('/api/routes?bike_type=gravel,mtb')).body).toHaveLength(0);
+    expect((await request(app).get('/api/routes?bike_type=mtb,road')).body).toHaveLength(1);
     expect((await request(app).get('/api/heatmap/bounds')).body.southwest).toHaveLength(2);
     const tracks = (await request(app).get('/api/heatmap/tracks')).body;
     expect(tracks).toHaveLength(2);

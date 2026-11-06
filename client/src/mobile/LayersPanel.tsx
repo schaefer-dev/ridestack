@@ -4,7 +4,7 @@ import type { BikeFilter } from '../api';
 import { BASE_MAPS } from '../components/map/basemaps';
 import { BikeDot } from '../components/ui/badges';
 import { cx } from '../components/ui/cx';
-import { BIKE, BIKE_TYPES } from '../domain';
+import { BIKE, BIKE_TYPES, bikeFilterIncludes, toggleBikeFilter } from '../domain';
 import { Chip } from './lists';
 import type { MobileView } from './view';
 
@@ -85,11 +85,12 @@ export function LayersPanel({
 
         <h3 className="mt-4 text-sm text-muted">Bikes</h3>
         <div role="group" aria-label="Filter by bike type" className="mt-2 flex flex-wrap gap-2">
-          <Chip pressed={bikeFilter === null} onClick={() => onBikeFilterChange(null)}>
-            All bikes
-          </Chip>
           {BIKE_TYPES.map((t) => (
-            <Chip key={t} pressed={bikeFilter === t} onClick={() => onBikeFilterChange(t)}>
+            <Chip
+              key={t}
+              pressed={bikeFilterIncludes(bikeFilter, t)}
+              onClick={() => onBikeFilterChange(toggleBikeFilter(bikeFilter, t, BIKE_TYPES))}
+            >
               <BikeDot type={t} />
               {BIKE[t].label}
             </Chip>

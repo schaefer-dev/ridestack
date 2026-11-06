@@ -77,4 +77,14 @@ export function safeJson<T>(value: string | null, fallback: T): T {
   }
 }
 
-export const bikeTypeFilter = z.enum(['road', 'gravel', 'mtb', 'unassigned']).optional();
+/**
+ * `bike_type=road` or several, comma-separated (`bike_type=road,gravel,unassigned`) or repeated.
+ * Absent means all bikes.
+ */
+export const bikeTypeFilter = z.preprocess(
+  (v) =>
+    v === undefined
+      ? undefined
+      : (Array.isArray(v) ? v : [v]).flatMap((s) => String(s).split(',')).filter(Boolean),
+  z.array(z.enum(['road', 'gravel', 'mtb', 'unassigned'])).optional()
+);

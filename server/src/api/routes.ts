@@ -18,7 +18,7 @@ export function routesRouter(ctx: AppContext): Router {
 
   router.get('/', (req, res) => {
     const q = parse(listQuery, req.query);
-    res.json(routeRepo.listRouteSummaries(db, { bikeType: q.bike_type }));
+    res.json(routeRepo.listRouteSummaries(db, { bikeTypes: q.bike_type }));
   });
 
   router.post('/rebuild', (_req, res) => {

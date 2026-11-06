@@ -378,13 +378,17 @@ describe('Sidebar', () => {
     expect(await screen.findByRole('tab', { name: 'Favorites 1' })).toBeInTheDocument();
   });
 
-  it('filters by bike type with counted chips', async () => {
+  it('toggles bike types with counted chips, all on by default', async () => {
     vi.mocked(api.getStats).mockResolvedValue(stats(1));
     const onBikeFilterChange = setup();
-    await userEvent.click(await screen.findByRole('button', { name: 'Gravel 3' }));
-    expect(onBikeFilterChange).toHaveBeenCalledWith('gravel');
+    const gravel = await screen.findByRole('button', { name: 'Gravel 3' });
+    expect(screen.queryByRole('button', { name: /All bikes/ })).not.toBeInTheDocument();
+    for (const name of ['Road 5', 'Gravel 3', 'MTB 1', 'Unassigned 1'])
+      expect(screen.getByRole('button', { name })).toHaveAttribute('aria-pressed', 'true');
+    await userEvent.click(gravel);
+    expect(onBikeFilterChange).toHaveBeenLastCalledWith(['road', 'mtb', 'unassigned']);
     await userEvent.click(screen.getByRole('button', { name: 'Unassigned 1' }));
-    expect(onBikeFilterChange).toHaveBeenCalledWith('unassigned');
+    expect(onBikeFilterChange).toHaveBeenLastCalledWith(['road', 'gravel', 'mtb']);
   });
 
   it('hides the Unassigned chip when every ride has a bike type', async () => {

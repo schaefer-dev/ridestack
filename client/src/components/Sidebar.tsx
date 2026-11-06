@@ -3,7 +3,13 @@ import { SlidersHorizontal, Upload } from 'lucide-react';
 import { useMemo, useState, type ChangeEvent } from 'react';
 import type { Selection, SidebarTab } from '../App';
 import { getRoutes, getStats, getSuggestions, type BikeFilter, type Stats } from '../api';
-import { BIKE, BIKE_TYPES } from '../domain';
+import {
+  BIKE,
+  BIKE_TYPES,
+  bikeFilterIncludes,
+  toggleBikeFilter,
+  type BikeFilterValue,
+} from '../domain';
 import { qk } from '../queryKeys';
 import { countFavorites } from './sidebar/favorites';
 import FavoritesTab from './sidebar/FavoritesTab';
@@ -245,6 +251,12 @@ function BikeFilterChips({
   value: BikeFilter;
   onChange(filter: BikeFilter): void;
 }) {
+  // Unassigned is only offered while there are such rides.
+  const showUnassigned = (stats?.rides.by_type.unassigned ?? 0) > 0;
+  const visible: BikeFilterValue[] = showUnassigned
+    ? [...BIKE_TYPES, 'unassigned']
+    : [...BIKE_TYPES];
+  const toggle = (v: BikeFilterValue) => onChange(toggleBikeFilter(value, v, visible));
   const count = (n: number | undefined) =>
     n === undefined ? null : (
       <>
@@ -258,21 +270,17 @@ function BikeFilterChips({
       aria-label="Filter by bike type"
       className="-ml-1 flex min-w-0 flex-1 flex-wrap gap-1"
     >
-      <ToggleChip pressed={value === null} onClick={() => onChange(null)}>
-        All bikes
-      </ToggleChip>
       {BIKE_TYPES.map((t) => (
-        <ToggleChip key={t} pressed={value === t} onClick={() => onChange(t)}>
+        <ToggleChip key={t} pressed={bikeFilterIncludes(value, t)} onClick={() => toggle(t)}>
           <BikeDot type={t} />
           {BIKE[t].label}
           {count(stats?.rides.by_type[t])}
         </ToggleChip>
       ))}
-      {/* Only offered while there is something to find (or it is the active filter). */}
-      {(value === 'unassigned' || (stats?.rides.by_type.unassigned ?? 0) > 0) && (
+      {showUnassigned && (
         <ToggleChip
-          pressed={value === 'unassigned'}
-          onClick={() => onChange('unassigned')}
+          pressed={bikeFilterIncludes(value, 'unassigned')}
+          onClick={() => toggle('unassigned')}
           title="Rides without a bike type"
         >
           <BikeDot type={null} />

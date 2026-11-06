@@ -21,7 +21,6 @@ import {
   type LatLngTuple,
   type Ride,
 } from '../../api';
-import { BIKE_TYPES, type BikeType } from '../../domain';
 import type { PreviewTarget } from '../../preview';
 import { qk } from '../../queryKeys';
 import SectionDetailsPanel from '../SectionDetailsPanel';
@@ -102,9 +101,6 @@ export default function MapView({
   /** View + popup to return to after previewing a ride from the "rides here" popup. */
   const saved = useRef<{ center: L.LatLng; zoom: number; popup: RidesPopup | null } | null>(null);
 
-  const sectionBike = BIKE_TYPES.includes(bikeFilter as BikeType)
-    ? (bikeFilter as BikeType)
-    : undefined;
   const { data: bounds } = useQuery({
     queryKey: qk.bounds(bikeFilter),
     queryFn: () => getMapBounds(bikeFilter),
@@ -122,7 +118,7 @@ export default function MapView({
   });
   const { data: sections } = useQuery({
     queryKey: qk.sections(bikeFilter),
-    queryFn: () => getSections(sectionBike ? { bike_type: sectionBike } : {}),
+    queryFn: () => getSections(bikeFilter),
     enabled: view.showSections,
   });
   const { data: ride } = useQuery({

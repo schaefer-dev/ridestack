@@ -98,3 +98,31 @@ export function parseRouteRating(name: string | null | undefined): RouteRating |
     rest: (name ?? '').slice(m[0].length).trim(),
   };
 }
+
+/** What the bike filter toggles: each bike type, plus rides without one. */
+export type BikeFilterValue = BikeType | 'unassigned';
+export const BIKE_FILTER_VALUES: readonly BikeFilterValue[] = [...BIKE_TYPES, 'unassigned'];
+
+/** The bike types shown, in canonical order; `null` = all of them (no filter sent). */
+export type BikeFilter = readonly BikeFilterValue[] | null;
+
+export function bikeFilterIncludes(filter: BikeFilter, value: BikeFilterValue): boolean {
+  return filter === null || filter.includes(value);
+}
+
+/**
+ * Turns one bike type on or off. Turning off the last one still on among `visible` (the chips
+ * on screen) is ignored, so the lists never go empty by accident. All on again = `null`.
+ */
+export function toggleBikeFilter(
+  filter: BikeFilter,
+  value: BikeFilterValue,
+  visible: readonly BikeFilterValue[] = BIKE_FILTER_VALUES
+): BikeFilter {
+  const on = new Set(filter ?? BIKE_FILTER_VALUES);
+  if (on.has(value)) on.delete(value);
+  else on.add(value);
+  if (!visible.some((v) => on.has(v))) return filter;
+  const next = BIKE_FILTER_VALUES.filter((v) => on.has(v));
+  return next.length === BIKE_FILTER_VALUES.length ? null : next;
+}

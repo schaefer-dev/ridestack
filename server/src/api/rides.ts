@@ -67,13 +67,13 @@ export function ridesRouter(ctx: AppContext): Router {
 
   router.get('/', (req, res) => {
     const q = parse(listQuery, req.query);
-    res.json(withRouteNames(rides.listRides(db, { bikeType: q.bike_type, routeId: q.route_id })));
+    res.json(withRouteNames(rides.listRides(db, { bikeTypes: q.bike_type, routeId: q.route_id })));
   });
 
   router.get('/near-point', (req, res) => {
     const q = parse(nearQuery, req.query);
     res.json(
-      withRouteNames(rides.ridesNear(db, q.lat, q.lng, q.radius_m, { bikeType: q.bike_type }))
+      withRouteNames(rides.ridesNear(db, q.lat, q.lng, q.radius_m, { bikeTypes: q.bike_type }))
     );
   });
 

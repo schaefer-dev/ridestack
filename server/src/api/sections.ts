@@ -2,10 +2,10 @@ import { randomUUID } from 'node:crypto';
 import { Router } from 'express';
 import { z } from 'zod';
 import type { AppContext } from '../app.ts';
-import { BIKE_TYPES, RATINGS, SURFACE_TAGS } from '../domain.ts';
+import { bikeTypeClause, BIKE_TYPES, RATINGS, SURFACE_TAGS } from '../domain.ts';
 import { NotFoundError } from '../errors.ts';
 import { getRide } from '../rides/repo.ts';
-import { parse, safeJson } from './http.ts';
+import { bikeTypeFilter, parse, safeJson } from './http.ts';
 
 const idParam = z.object({ id: z.string().min(1) });
 const lat = z.number().min(-90).max(90);
@@ -13,7 +13,7 @@ const lng = z.number().min(-180).max(180);
 const index = z.number().int().nonnegative().nullable().optional();
 
 const listQuery = z.object({
-  bike_type: z.enum(BIKE_TYPES).optional(),
+  bike_type: bikeTypeFilter,
   rating: z.enum(RATINGS).optional(),
   ride_id: z.string().optional(),
 });
@@ -73,9 +73,10 @@ export function sectionsRouter(ctx: AppContext): Router {
     const q = parse(listQuery, req.query);
     const clauses: string[] = [];
     const params: unknown[] = [];
-    if (q.bike_type) {
-      clauses.push('s.bike_type = ?');
-      params.push(q.bike_type);
+    const bike = bikeTypeClause('s.bike_type', q.bike_type);
+    if (bike.sql) {
+      clauses.push(bike.sql);
+      params.push(...bike.params);
     }
     if (q.rating) {
       clauses.push('s.rating = ?');

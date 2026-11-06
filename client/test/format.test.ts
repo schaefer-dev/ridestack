@@ -8,7 +8,13 @@ import {
   matchesMetrics,
 } from '../src/components/sidebar/metricFilter';
 import { sortRoutes } from '../src/components/sidebar/routeSort';
-import { HEAT_RAMP, heatColor, parseRouteRating } from '../src/domain';
+import {
+  HEAT_RAMP,
+  bikeFilterIncludes,
+  heatColor,
+  parseRouteRating,
+  toggleBikeFilter,
+} from '../src/domain';
 import {
   formatDate,
   formatDuration,
@@ -220,5 +226,24 @@ describe('metric filter', () => {
     expect(activeMetricCount(f({ minKm: 'abc' }))).toBe(0);
     expect(activeMetricCount(f({ minKm: '10', maxKm: '20' }))).toBe(1);
     expect(activeMetricCount(f({ maxKm: '20', minElev: '300' }))).toBe(2);
+  });
+});
+
+describe('bike filter toggles', () => {
+  it('starts with everything on and returns to null when all are on again', () => {
+    expect(bikeFilterIncludes(null, 'gravel')).toBe(true);
+    const noGravel = toggleBikeFilter(null, 'gravel');
+    expect(noGravel).toEqual(['road', 'mtb', 'unassigned']);
+    expect(bikeFilterIncludes(noGravel, 'gravel')).toBe(false);
+    expect(toggleBikeFilter(noGravel, 'gravel')).toBeNull();
+  });
+
+  it('keeps canonical order and never turns off the last visible type', () => {
+    expect(toggleBikeFilter(['mtb'], 'road')).toEqual(['road', 'mtb']);
+    expect(toggleBikeFilter(['road', 'unassigned'], 'road', ['road', 'gravel', 'mtb'])).toEqual([
+      'road',
+      'unassigned',
+    ]);
+    expect(toggleBikeFilter(['road'], 'road')).toEqual(['road']);
   });
 });

@@ -1,6 +1,6 @@
 import type { DB } from '../db/connection.ts';
 import { stmt } from '../db/stmt.ts';
-import type { BikeType, RideDevice } from '../domain.ts';
+import { bikeTypeClause, type BikeFilterValue, type BikeType, type RideDevice } from '../domain.ts';
 import { cellNeighbourhood } from '../geo/cells.ts';
 import { haversineM, type LatLng } from '../geo/geo.ts';
 import type { RideShape } from '../matching/clustering.ts';
@@ -80,17 +80,18 @@ export function getRide(db: DB, id: string): RideRow | undefined {
 }
 
 export interface RideFilter {
-  bikeType?: BikeType | 'unassigned';
+  /** Any of these bike types; empty or absent = all. */
+  bikeTypes?: readonly BikeFilterValue[];
   routeId?: string;
 }
 
 function filterSql(f: RideFilter, alias = 'rides'): { where: string; params: unknown[] } {
   const clauses: string[] = [];
   const params: unknown[] = [];
-  if (f.bikeType === 'unassigned') clauses.push(`${alias}.bike_type IS NULL`);
-  else if (f.bikeType) {
-    clauses.push(`${alias}.bike_type = ?`);
-    params.push(f.bikeType);
+  const bike = bikeTypeClause(`${alias}.bike_type`, f.bikeTypes);
+  if (bike.sql) {
+    clauses.push(bike.sql);
+    params.push(...bike.params);
   }
   if (f.routeId) {
     clauses.push(`${alias}.route_id = ?`);

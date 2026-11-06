@@ -1,15 +1,15 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import type { AppContext } from '../app.ts';
+import { bikeTypeClause, type BikeFilterValue } from '../domain.ts';
 import { decodePolyline } from '../track/codec.ts';
 import { bikeTypeFilter, parse } from './http.ts';
 
 const filterQuery = z.object({ bike_type: bikeTypeFilter });
 
-function bikeWhere(bikeType: string | undefined): { sql: string; params: unknown[] } {
-  if (!bikeType) return { sql: '', params: [] };
-  if (bikeType === 'unassigned') return { sql: 'WHERE r.bike_type IS NULL', params: [] };
-  return { sql: 'WHERE r.bike_type = ?', params: [bikeType] };
+function bikeWhere(types: readonly BikeFilterValue[] | undefined) {
+  const bike = bikeTypeClause('r.bike_type', types);
+  return { sql: bike.sql ? `WHERE ${bike.sql}` : '', params: bike.params };
 }
 
 const round5 = (v: number) => Math.round(v * 1e5) / 1e5;

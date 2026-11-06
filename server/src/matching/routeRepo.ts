@@ -1,5 +1,6 @@
 import type { DB } from '../db/connection.ts';
 import { stmt } from '../db/stmt.ts';
+import { bikeTypeClause, type BikeFilterValue } from '../domain.ts';
 import type { Direction } from './similarity.ts';
 
 export type NameSource = 'title' | 'geo' | 'fallback' | 'user';
@@ -51,15 +52,16 @@ const SUMMARY_SQL = `
   JOIN rides r ON r.route_id = rt.id
   LEFT JOIN ride_geometry g ON g.ride_id = rt.reference_ride_id`;
 
-export function listRouteSummaries(db: DB, opts: { bikeType?: string } = {}): RouteSummary[] {
-  const where = opts.bikeType
-    ? opts.bikeType === 'unassigned'
-      ? `WHERE rt.id IN (SELECT route_id FROM rides WHERE bike_type IS NULL)`
-      : `WHERE rt.id IN (SELECT route_id FROM rides WHERE bike_type = @bikeType)`
-    : '';
+/** Routes with at least one ride of the given bike types (all routes without a filter). */
+export function listRouteSummaries(
+  db: DB,
+  opts: { bikeTypes?: readonly BikeFilterValue[] } = {}
+): RouteSummary[] {
+  const bike = bikeTypeClause('bike_type', opts.bikeTypes);
+  const where = bike.sql ? `WHERE rt.id IN (SELECT route_id FROM rides WHERE ${bike.sql})` : '';
   return db
     .prepare(`${SUMMARY_SQL} ${where} GROUP BY rt.id ORDER BY last_ridden DESC`)
-    .all(opts.bikeType ? { bikeType: opts.bikeType } : {}) as RouteSummary[];
+    .all(...bike.params) as RouteSummary[];
 }
 
 export function getRouteSummary(db: DB, id: string): RouteSummary | undefined {

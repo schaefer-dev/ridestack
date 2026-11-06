@@ -1,10 +1,10 @@
 import axios from 'axios';
-import type { BikeType, Rating } from './domain';
+import type { BikeFilter, BikeType, Rating } from './domain';
 
 const http = axios.create({ baseURL: '/api' });
 
 export type LatLngTuple = [number, number];
-export type BikeFilter = BikeType | 'unassigned' | null;
+export type { BikeFilter } from './domain';
 
 export interface Ride {
   id: string;
@@ -167,7 +167,8 @@ export interface ImportResult {
   summary: { total: number; success: number; skipped: number; failed: number };
 }
 
-const bikeParams = (bikeType: BikeFilter) => (bikeType ? { bike_type: bikeType } : {});
+/** No filter = all bikes; otherwise the shown types, comma-separated. */
+const bikeParams = (filter: BikeFilter) => (filter ? { bike_type: filter.join(',') } : {});
 
 /** Error text from an API failure, for toasts. */
 export function errorMessage(error: unknown): string {
@@ -282,8 +283,8 @@ export const mergeRoutes = async (sourceId: string, intoId: string) =>
 
 // ---- sections ---------------------------------------------------------------------------------
 
-export const getSections = async (filters: { bike_type?: BikeType } = {}) =>
-  (await http.get<Section[]>('/sections', { params: filters })).data;
+export const getSections = async (bikeFilter: BikeFilter = null) =>
+  (await http.get<Section[]>('/sections', { params: bikeParams(bikeFilter) })).data;
 
 export const createSection = async (
   section: Omit<Section, 'id' | 'created_at' | 'ride_title' | 'ride_date'>
